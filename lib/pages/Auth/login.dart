@@ -1,5 +1,5 @@
 import 'dart:io';
-
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,7 +10,6 @@ import 'package:lottie/lottie.dart';
 import 'package:new01/pages/ui/home_page.dart';
 import 'package:new01/pages/Auth/userdetails.dart'; // For UserDetailsPage
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
-import 'PhoneAuth.dart';
 import 'authentication.dart';
 import 'signup.dart';
 
@@ -197,21 +196,61 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     });
 
     try {
-      final LoginResult result = await FacebookAuth.instance.login();
+      // Clear any previous login before attempting a new one
+      await FacebookAuth.instance.logOut();
 
-      if (result.status == LoginStatus.success) {
-        final AccessToken accessToken = result.accessToken!;
-        final OAuthCredential credential = FacebookAuthProvider.credential(accessToken.token);
+      // Request login with specific permissions
+      final LoginResult result = await FacebookAuth.instance.login(
+        permissions: ['email', 'public_profile'],
+      );
 
-        UserCredential userCredential = await _auth.signInWithCredential(credential);
-        await _checkUserDetailsAndNavigate(userCredential.user!);
-      } else if (result.status == LoginStatus.cancelled) {
-        // User canceled the sign-in flow
-      } else {
-        _showErrorSnackBar('Facebook login failed: ${result.message}');
+      switch (result.status) {
+        case LoginStatus.success:
+        // Check if accessToken exists
+          if (result.accessToken == null) {
+            throw Exception('Facebook access token is null');
+          }
+
+          // In v7.1.1, the property might be named differently
+          // Use the correct property name to access the token string
+          final String tokenString = result.accessToken!.tokenString;
+
+          // Debug print to verify token (remove in production)
+          print('Facebook access token obtained: ${tokenString.substring(0, min(10, tokenString.length))}...');
+
+          // Create Firebase credential - ensure token is not null or empty
+          if (tokenString.isEmpty) {
+            throw Exception('Facebook access token is empty');
+          }
+
+          final OAuthCredential credential = FacebookAuthProvider.credential(tokenString);
+
+          // Sign in with Firebase
+          final UserCredential userCredential = await _auth.signInWithCredential(credential);
+
+          // Additional validation to ensure user is signed in
+          if (userCredential.user == null) {
+            throw Exception('Failed to sign in with Facebook credential');
+          }
+
+          // Check user details and navigate
+          await _checkUserDetailsAndNavigate(userCredential.user!);
+          break;
+
+        case LoginStatus.cancelled:
+          _showErrorSnackBar('Facebook login was cancelled by user');
+          break;
+
+        case LoginStatus.failed:
+          _showErrorSnackBar('Facebook login failed: ${result.message}');
+          break;
+
+        case LoginStatus.operationInProgress:
+          _showErrorSnackBar('Facebook login operation already in progress');
+          break;
       }
     } catch (e) {
-      _showErrorSnackBar('Facebook sign-in failed: ${e.toString()}');
+      _showErrorSnackBar('Facebook sign-in error: ${e.toString()}');
     } finally {
       setState(() {
         isLoading = false;

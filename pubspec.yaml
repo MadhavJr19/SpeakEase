@@ -38,7 +38,7 @@ dependencies:
   flutter_svg: ^2.0.17
   intl: ^0.20.0
   sign_in_with_apple: ^6.1.4
-  flutter_facebook_auth: ^6.0.4
+  flutter_facebook_auth: ^7.1.1
 
 dev_dependencies:
   flutter_test:

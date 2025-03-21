@@ -127,8 +127,10 @@ class _SignUpPageState extends State<SignUpPage> {
   Future<void> _signInWithFacebook() async {
     _setLoading(true);
     try {
+      // The new API returns a LoginResult
       final LoginResult result = await FacebookAuth.instance.login();
 
+      // Check login status
       if (result.status != LoginStatus.success) {
         throw FirebaseAuthException(
           code: 'ERROR_FACEBOOK_LOGIN_FAILED',
@@ -136,7 +138,38 @@ class _SignUpPageState extends State<SignUpPage> {
         );
       }
 
-      final OAuthCredential credential = FacebookAuthProvider.credential(result.accessToken!.token);
+      // In version 7.1.1, let's inspect and use the correct property
+      final AccessToken? accessToken = result.accessToken;
+
+      if (accessToken == null) {
+        throw FirebaseAuthException(
+          code: 'ERROR_MISSING_ACCESS_TOKEN',
+          message: 'Facebook login successful but no access token was returned',
+        );
+      }
+
+      // Try using toString() to debug
+      print("Access Token: ${accessToken.toString()}");
+
+      // Try accessing the token differently
+      String? tokenString = accessToken.toString();
+      // or check other potential properties
+
+      // Use an alternate approach - get the raw data as a Map
+      final Map<String, dynamic>? accessTokenMap = result.accessToken?.toJson();
+      final String? tokenFromMap = accessTokenMap?['token'] as String?;
+
+      if (tokenFromMap == null) {
+        throw FirebaseAuthException(
+          code: 'ERROR_EXTRACTING_TOKEN',
+          message: 'Could not extract token from Facebook access token',
+        );
+      }
+
+      // Create the credential with the token from map
+      final OAuthCredential credential = FacebookAuthProvider.credential(tokenFromMap);
+
+      // Sign in with Firebase using the credential
       final userCredential = await _auth.signInWithCredential(credential);
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -530,19 +563,19 @@ class GlassContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-        margin: const EdgeInsets.symmetric(horizontal: 24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.07),
-              blurRadius: 40,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: child,
-        );
-    }
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.07),
+            blurRadius: 40,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
 }
