@@ -7,12 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:new01/pages/theme_provider.dart';
 import 'package:new01/pages/ui/Profile/update_profile.dart';
-import 'package:new01/pages/ui/Settings/settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../Auth/authentication.dart';
+import '../Settings/settings.dart';
 import 'about.dart';
 import 'child_management.dart';
 
@@ -41,8 +40,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final user = _auth.currentUser;
     if (user != null) {
       try {
-        final docSnapshot =
-        await _firestore.collection('users').doc(user.uid).get();
+        final docSnapshot = await _firestore.collection('users').doc(user.uid).get();
         if (docSnapshot.exists) {
           setState(() {
             _username = docSnapshot['username'];
@@ -64,44 +62,34 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final user = _auth.currentUser;
       if (user != null) {
-        // Store UID for later use
-        final String uid = user.uid;
-
-        // Delete user data from Firestore
-        await _firestore.collection('users').doc(uid).delete();
-
-        // Clear specific data from SharedPreferences
         final prefs = await SharedPreferences.getInstance();
-
-        // Reset level progress to Level 1
+        await prefs.remove('wordRecognized');
+        await prefs.remove('level2_wordRecognized');
+        await prefs.remove('level3_wordRecognized');
+        await prefs.remove('level4_wordRecognized');
+        await prefs.remove('level5_wordRecognized');
+        await prefs.remove('level6_wordRecognized');
+        await prefs.remove('level7_wordRecognized');
+        await prefs.remove('level2Unlocked');
+        await prefs.remove('level3Unlocked');
+        await prefs.remove('level4Unlocked');
+        await prefs.remove('level5Unlocked');
+        await prefs.remove('level6Unlocked');
+        await prefs.remove('level7Unlocked');
         await prefs.setInt('level_progress', 1);
 
-        // Remove stored profile image
-        await prefs.remove('profile_image_$uid');
-
-        // Clear other user-specific preferences if needed
-        // But don't clear the entire SharedPreferences with prefs.clear()
-
-        setState(() {
-          _image = null;
-          _username = user.displayName ?? 'UserName';
-        });
-
-        // Show confirmation message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("User data cleared successfully.")),
-        );
-
-        // Navigate back to profile page (or wherever appropriate)
-        // You might want to refresh the profile page instead of navigating away
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => ProfilePage()),
+          MaterialPageRoute(builder: (context) => AuthPage()),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to clear data: $e")),
+        SnackBar(content: Text("Failed to reset game progress: $e")),
+      );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => AuthPage()),
       );
     }
   }
@@ -118,7 +106,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _pickImage() async {
     final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-
     if (pickedFile != null) {
       final imageFile = File(pickedFile.path);
       final bytes = await imageFile.readAsBytes();
@@ -135,11 +122,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
   void _viewProfileImage() {
     final user = FirebaseAuth.instance.currentUser;
-
-    // If there's no profile image to display, return early
-    if (_image == null && user?.photoURL == null) {
-      return;
-    }
+    if (_image == null && user?.photoURL == null) return;
 
     Navigator.push(
       context,
@@ -169,22 +152,25 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildProfileImageWidget() {
     final user = FirebaseAuth.instance.currentUser;
-
     if (_image != null) {
       return CircleAvatar(
-        radius: 30,
+        radius: 70,
         backgroundImage: MemoryImage(_image!),
       );
     } else if (user?.photoURL != null) {
       return CircleAvatar(
-        radius: 30,
+        radius: 70,
         backgroundImage: NetworkImage(user!.photoURL!),
       );
     } else {
-      return Icon(
-        Icons.person_outline,
-        size: 60,
-        color: Colors.deepPurple.withOpacity(0.7),
+      return CircleAvatar(
+        radius: 70,
+        backgroundColor: Colors.deepPurple.withOpacity(0.1),
+        child: Icon(
+          Icons.person_outline,
+          size: 80,
+          color: Colors.deepPurple.withOpacity(0.7),
+        ),
       );
     }
   }
@@ -199,41 +185,7 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text(
-          'Your Profile',
-          style: GoogleFonts.poppins(
-            color: Colors.black87,
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
-        ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(
-                themeProvider.isDarkMode
-                    ? FontAwesomeIcons.sun
-                    : FontAwesomeIcons.moon,
-                color: Color(0xFF323232),
-                size: 16,
-              ),
-            ),
-            onPressed: () => themeProvider.toggleTheme(),
-          ),
-        ],
       ),
       backgroundColor: Colors.transparent,
       body: Container(
@@ -256,57 +208,89 @@ class _ProfilePageState extends State<ProfilePage> {
               padding: const EdgeInsets.only(top: 20),
               child: Column(
                 children: [
-                  // Title and profile image
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25),
-                    child: Row(
+                  // Centered Profile Picture with Username and Email
+                  Center(
+                    child: Column(
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'YOUR',
-                              style: TextStyle(
-                                fontFamily: "Impact",
-                                fontSize: 40,
-                                color: Color(0xFF323232),
-                                height: 1.0,
-                              ),
-                            ),
-                            Text(
-                              'PROFILE',
-                              style: TextStyle(
-                                fontFamily: "Impact",
-                                fontSize: 40,
-                                color: Color(0xFFFDAA40),
-                                height: 1.0,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
                         GestureDetector(
                           onTap: _viewProfileImage,
                           child: Stack(
+                            alignment: Alignment.bottomRight,
                             children: [
-                              _buildProfileImageWidget(),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: GestureDetector(
-                                  onTap: _pickImage,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.deepPurple,
-                                      shape: BoxShape.circle,
+                              Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
                                     ),
-                                    child: Icon(
-                                      Icons.add_a_photo,
-                                      size: 16,
-                                      color: Colors.white,
-                                    ),
+                                  ],
+                                ),
+                                child: _buildProfileImageWidget(),
+                              ),
+                              GestureDetector(
+                                onTap: _pickImage,
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.deepPurple,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white, width: 2),
                                   ),
+                                  child: const Icon(
+                                    Icons.camera_alt,
+                                    size: 20,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _username ?? 'Username',
+                          style: GoogleFonts.nunito(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF323232),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          user?.email ?? 'user@gmail.com',
+                          style: GoogleFonts.nunito(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        ElevatedButton(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const UpdateProfilePage()),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepPurple,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            elevation: 5,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.edit, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Edit Profile',
+                                style: GoogleFonts.nunito(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
@@ -315,131 +299,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // User info card
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.07),
-                          blurRadius: 40,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Username display
-                          Text(
-                            'Username',
-                            style: GoogleFonts.nunito(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF323232),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF8F9FA),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.alternate_email, color: Color(0xFF323232).withOpacity(0.7), size: 20),
-                                const SizedBox(width: 12),
-                                Text(
-                                  _username ?? 'username',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          // Email display
-                          Text(
-                            'Email',
-                            style: GoogleFonts.nunito(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF323232),
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                            decoration: BoxDecoration(
-                              color: Color(0xFFF8F9FA),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.email_outlined, color: Color(0xFF323232).withOpacity(0.7), size: 20),
-                                const SizedBox(width: 12),
-                                Text(
-                                  user?.email ?? 'user@gmail.com',
-                                  style: TextStyle(
-                                    color: Colors.black,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Edit profile button
-                          SizedBox(
-                            height: 56,
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const UpdateProfilePage()),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepPurple,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                elevation: 4,
-                              ),
-                              child: Text(
-                                'Edit Profile',
-                                style: GoogleFonts.nunito(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Options card
+                  // Options Section
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     decoration: BoxDecoration(
@@ -463,7 +324,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const SettingsPage()),
+                                MaterialPageRoute(builder: (context) => SettingsPage()),
                               );
                             },
                           ),
@@ -474,7 +335,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const ChildManagementPage()),
+                                MaterialPageRoute(builder: (context) => ChildManagementPage()),
                               );
                             },
                           ),
@@ -493,10 +354,8 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
-                  // Danger zone card
+                  // Clear Data/Logout Section
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     decoration: BoxDecoration(
@@ -531,7 +390,6 @@ class _ProfilePageState extends State<ProfilePage> {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 24),
                 ],
               ),
@@ -582,7 +440,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 }
 
-// Keep the same ImageViewer functionality
 class _ImageViewerPage extends StatefulWidget {
   final Uint8List? image;
   final String? imageUrl;
@@ -600,13 +457,8 @@ class _ImageViewerPage extends StatefulWidget {
 }
 
 class _ImageViewerPageState extends State<_ImageViewerPage> {
-  // Transform controller to handle zoom and pan
   final TransformationController _transformationController = TransformationController();
-
-  // Track if we're in zoom mode
   bool _isZoomed = false;
-
-  // Double tap zoom values
   static const double _minScale = 0.8;
   static const double _maxScale = 5.0;
   static const double _doubleTapScale = 3.0;
@@ -617,14 +469,11 @@ class _ImageViewerPageState extends State<_ImageViewerPage> {
     super.dispose();
   }
 
-  // Handle double tap to zoom in/out
   void _handleDoubleTap() {
     if (_isZoomed) {
-      // Reset to original size
       _transformationController.value = Matrix4.identity();
       _isZoomed = false;
     } else {
-      // Zoom in to predefined scale
       final Matrix4 newMatrix = Matrix4.identity()..scale(_doubleTapScale);
       _transformationController.value = newMatrix;
       _isZoomed = true;
@@ -634,8 +483,6 @@ class _ImageViewerPageState extends State<_ImageViewerPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    // Determine what content to display
     Widget content;
     if (widget.image != null) {
       content = Image.memory(widget.image!);
@@ -654,47 +501,46 @@ class _ImageViewerPageState extends State<_ImageViewerPage> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black.withOpacity(0.5),
-        elevation: 0,
-        title: Text(
-          widget.username,
-          style: const TextStyle(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          // Add zoom instructions tooltip
-          IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.white),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Double-tap to zoom in/out or pinch to zoom'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
+        backgroundColor: Colors.black,
+        appBar: AppBar(
+          backgroundColor: Colors.black.withOpacity(0.5),
+          elevation: 0,
+          title: Text(
+            widget.username,
+            style: const TextStyle(color: Colors.white),
           ),
-        ],
-      ),
-      body: Center(
-        child: GestureDetector(
-          onDoubleTap: _handleDoubleTap,
-          child: InteractiveViewer(
-            transformationController: _transformationController,
-            minScale: _minScale,
-            maxScale: _maxScale,
-            panEnabled: true,
-            scaleEnabled: true,
-            boundaryMargin: const EdgeInsets.all(double.infinity), // Allow panning beyond boundaries
-            child: Hero(
-              tag: 'profile_image',
-              child: content,
+          iconTheme: const IconThemeData(color: Colors.white),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.info_outline, color: Colors.white),
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Double-tap to zoom in/out or pinch to zoom'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
             ),
-          ),
+          ],
         ),
-      ),
-    );
-  }
+        body: Center(
+            child: GestureDetector(
+              onDoubleTap: _handleDoubleTap,
+              child: InteractiveViewer(
+                transformationController: _transformationController,
+                minScale: _minScale,
+                maxScale: _maxScale,
+                panEnabled: true,
+                scaleEnabled: true,
+                boundaryMargin: const EdgeInsets.all(double.infinity),
+                child: Hero(
+                  tag: 'profile_image',
+                  child: content,
+                ),
+              ),
+            ),
+            ),
+        );
+    }
 }

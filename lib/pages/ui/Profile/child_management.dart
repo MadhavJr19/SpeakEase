@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:new01/pages/theme_provider.dart';
 
 class ChildManagementPage extends StatefulWidget {
   const ChildManagementPage({super.key});
@@ -58,7 +62,10 @@ class _ChildManagementPageState extends State<ChildManagementPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Enter Parental PIN'),
+        title: Text(
+          'Enter Parental PIN',
+          style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+        ),
         content: TextField(
           controller: _pinController,
           keyboardType: TextInputType.number,
@@ -74,7 +81,7 @@ class _ChildManagementPageState extends State<ChildManagementPage> {
               Navigator.pop(context);
               _pinController.clear();
             },
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: GoogleFonts.nunito()),
           ),
           TextButton(
             onPressed: () {
@@ -88,7 +95,7 @@ class _ChildManagementPageState extends State<ChildManagementPage> {
                 );
               }
             },
-            child: const Text('Confirm'),
+            child: Text('Confirm', style: GoogleFonts.nunito()),
           ),
         ],
       ),
@@ -103,7 +110,10 @@ class _ChildManagementPageState extends State<ChildManagementPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Change Parental PIN'),
+        title: Text(
+          'Change Parental PIN',
+          style: GoogleFonts.nunito(fontWeight: FontWeight.w600),
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -137,7 +147,7 @@ class _ChildManagementPageState extends State<ChildManagementPage> {
                 _isChangingPin = false;
               });
             },
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: GoogleFonts.nunito()),
           ),
           TextButton(
             onPressed: () {
@@ -160,7 +170,7 @@ class _ChildManagementPageState extends State<ChildManagementPage> {
                 );
               }
             },
-            child: const Text('Save'),
+            child: Text('Save', style: GoogleFonts.nunito()),
           ),
         ],
       ),
@@ -169,218 +179,387 @@ class _ChildManagementPageState extends State<ChildManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('Child Management'),
-        centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        title: Text(
+          'Child Management',
+          style: GoogleFonts.poppins(
+            color: Colors.black87,
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+          ),
+        ),
+        centerTitle: true,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          const SizedBox(height: 16),
-
-          // Parental Lock Section
-          Card(
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Parental Controls',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  SwitchListTile(
-                    title: const Text('Enable Parental Lock'),
-                    subtitle: const Text('Require PIN for changing settings'),
-                    value: _parentalLockEnabled,
-                    onChanged: (value) {
-                      if (_parentalLockEnabled) {
-                        _showPinDialog(() {
-                          setState(() {
-                            _parentalLockEnabled = value;
-                          });
-                          _saveSettings();
-                        });
-                      } else {
-                        setState(() {
-                          _parentalLockEnabled = value;
-                        });
-                        _saveSettings();
-                      }
-                    },
-                  ),
-                  const Divider(),
-                  ListTile(
-                    title: const Text('Change Parental PIN'),
-                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                    onTap: () {
-                      if (_parentalLockEnabled) {
-                        _showPinDialog(_changePin);
-                      } else {
-                        _changePin();
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.white,
+              Color(0xFFFFCC80),
+            ],
           ),
-
-          const SizedBox(height: 16),
-
-          // Content Filter Section
-          Card(
-            elevation: 2,
+        ),
+        height: MediaQuery.of(context).size.height,
+        width: MediaQuery.of(context).size.width,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
             child: Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.only(top: 20),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Content Controls',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  SwitchListTile(
-                    title: const Text('Enable Content Filter'),
-                    subtitle: const Text('Block inappropriate content'),
-                    value: _contentFilterEnabled,
-                    onChanged: (value) {
-                      if (_parentalLockEnabled) {
-                        _showPinDialog(() {
-                          setState(() {
-                            _contentFilterEnabled = value;
-                          });
-                          _saveSettings();
-                        });
-                      } else {
-                        setState(() {
-                          _contentFilterEnabled = value;
-                        });
-                        _saveSettings();
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Time Controls Section
-          Card(
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Time Controls',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  SwitchListTile(
-                    title: const Text('Enable Time Restrictions'),
-                    subtitle: const Text('Limit daily app usage time'),
-                    value: _timeRestrictionsEnabled,
-                    onChanged: (value) {
-                      if (_parentalLockEnabled) {
-                        _showPinDialog(() {
-                          setState(() {
-                            _timeRestrictionsEnabled = value;
-                          });
-                          _saveSettings();
-                        });
-                      } else {
-                        setState(() {
-                          _timeRestrictionsEnabled = value;
-                        });
-                        _saveSettings();
-                      }
-                    },
-                  ),
-
-                  // Only show time slider if time restrictions are enabled
-                  if (_timeRestrictionsEnabled)
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Text('Daily Time Limit (minutes)'),
-                        ),
-                        Slider(
-                          value: _dailyTimeLimit.toDouble(),
-                          min: 15,
-                          max: 180,
-                          divisions: 11,
-                          label: _dailyTimeLimit.toString(),
-                          onChanged: (double value) {
-                            setState(() {
-                              _dailyTimeLimit = value.toInt();
-                            });
-                          },
-                          onChangeEnd: (double value) {
-                            _saveSettings();
-                          },
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Text('Current limit: $_dailyTimeLimit minutes'),
+                  // Parental Controls Card
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.07),
+                          blurRadius: 40,
+                          offset: const Offset(0, 10),
                         ),
                       ],
                     ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Child Profiles Section
-          Card(
-            elevation: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Child Profiles',
-                    style: theme.textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  ListTile(
-                    leading: const CircleAvatar(
-                      child: Icon(Icons.person),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Parental Controls',
+                            style: GoogleFonts.nunito(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF323232),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SwitchListTile(
+                            title: Text(
+                              'Enable Parental Lock',
+                              style: GoogleFonts.nunito(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF323232),
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Require PIN for changing settings',
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            value: _parentalLockEnabled,
+                            onChanged: (value) {
+                              if (_parentalLockEnabled) {
+                                _showPinDialog(() {
+                                  setState(() {
+                                    _parentalLockEnabled = value;
+                                  });
+                                  _saveSettings();
+                                });
+                              } else {
+                                setState(() {
+                                  _parentalLockEnabled = value;
+                                });
+                                _saveSettings();
+                              }
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildTile(
+                            icon: Icons.lock,
+                            title: 'Change Parental PIN',
+                            onTap: () {
+                              if (_parentalLockEnabled) {
+                                _showPinDialog(_changePin);
+                              } else {
+                                _changePin();
+                              }
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                    title: const Text('Add Child Profile'),
-                    subtitle: const Text('Create a new profile for your child'),
-                    trailing: const Icon(Icons.add),
-                    onTap: () {
-                      // Add child profile functionality
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Feature coming soon')),
-                      );
-                    },
                   ),
+                  const SizedBox(height: 20),
+
+                  // Content Controls Card
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.07),
+                          blurRadius: 40,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Content Controls',
+                            style: GoogleFonts.nunito(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF323232),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SwitchListTile(
+                            title: Text(
+                              'Enable Content Filter',
+                              style: GoogleFonts.nunito(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF323232),
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Block inappropriate content',
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            value: _contentFilterEnabled,
+                            onChanged: (value) {
+                              if (_parentalLockEnabled) {
+                                _showPinDialog(() {
+                                  setState(() {
+                                    _contentFilterEnabled = value;
+                                  });
+                                  _saveSettings();
+                                });
+                              } else {
+                                setState(() {
+                                  _contentFilterEnabled = value;
+                                });
+                                _saveSettings();
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Time Controls Card
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.07),
+                          blurRadius: 40,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Time Controls',
+                            style: GoogleFonts.nunito(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF323232),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          SwitchListTile(
+                            title: Text(
+                              'Enable Time Restrictions',
+                              style: GoogleFonts.nunito(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF323232),
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Limit daily app usage time',
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            value: _timeRestrictionsEnabled,
+                            onChanged: (value) {
+                              if (_parentalLockEnabled) {
+                                _showPinDialog(() {
+                                  setState(() {
+                                    _timeRestrictionsEnabled = value;
+                                  });
+                                  _saveSettings();
+                                });
+                              } else {
+                                setState(() {
+                                  _timeRestrictionsEnabled = value;
+                                });
+                                _saveSettings();
+                              }
+                            },
+                          ),
+                          if (_timeRestrictionsEnabled) ...[
+                            const SizedBox(height: 16),
+                            Text(
+                              'Daily Time Limit (minutes)',
+                              style: GoogleFonts.nunito(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF323232),
+                              ),
+                            ),
+                            Slider(
+                              value: _dailyTimeLimit.toDouble(),
+                              min: 15,
+                              max: 180,
+                              divisions: 11,
+                              label: _dailyTimeLimit.toString(),
+                              onChanged: (double value) {
+                                setState(() {
+                                  _dailyTimeLimit = value.toInt();
+                                });
+                              },
+                              onChangeEnd: (double value) {
+                                _saveSettings();
+                              },
+                            ),
+                            Text(
+                              'Current limit: $_dailyTimeLimit minutes',
+                              style: GoogleFonts.nunito(
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Child Profiles Card
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.07),
+                          blurRadius: 40,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Child Profiles',
+                            style: GoogleFonts.nunito(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF323232),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          _buildTile(
+                            icon: Icons.person_add,
+                            title: 'Add Child Profile',
+                            subtitle: 'Create a new profile for your child',
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Feature coming soon')),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
           ),
-
-          const SizedBox(height: 24),
-        ],
+        ),
       ),
     );
   }
+
+  Widget _buildTile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: const Color(0xFF323232).withOpacity(0.7),
+        size: 22,
+      ),
+      title: Text(
+        title,
+        style: GoogleFonts.nunito(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xFF323232),
+        ),
+      ),
+      subtitle: subtitle != null
+          ? Text(
+        subtitle,
+        style: GoogleFonts.nunito(
+          fontSize: 13,
+          color: Colors.grey,
+        ),
+      )
+          : null,
+      trailing: const Icon(
+        Icons.arrow_forward_ios,
+        size: 16,
+        color: Colors.grey,
+      ),
+      onTap: onTap,
+    );
+  }
+
+  Widget _buildDivider() {
+    return Divider(
+        height: 1,
+        thickness: 0.5,
+        color: Colors.grey.withOpacity(0.2),
+        indent: 16,
+        endIndent: 16,
+        );
+    }
 }
