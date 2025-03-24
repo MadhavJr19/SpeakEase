@@ -1,373 +1,991 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:permission_handler/permission_handler.dart';
 import 'dart:ui';
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:lottie/lottie.dart';
+
+import '../ui/home_page.dart';
 
 class LevelThreeScreen extends StatefulWidget {
+  const LevelThreeScreen({super.key});
+
   @override
   _LevelThreeScreenState createState() => _LevelThreeScreenState();
 }
 
-class _LevelThreeScreenState extends State<LevelThreeScreen> {
-  final FlutterTts _flutterTts = FlutterTts();
-  stt.SpeechToText _speech = stt.SpeechToText();
-  bool _isListening = false;
-  String _recognizedText = "";
-  String _currentWord = ""; // Tracks the word being rehearsed
-  bool _feedbackShown = false; // Tracks if feedback is already shown
+class _LevelThreeScreenState extends State<LevelThreeScreen> with TickerProviderStateMixin {
+  late stt.SpeechToText _speech;
+  late FlutterTts _flutterTts;
+  late AnimationController _confettiController;
 
-  final List<String> words = ["Hello", "Welcome", "Thanks", "Goodbye", "Okay"];
-  List<bool> wordUnlocked = [true, false, false, false, false]; // Tracks which words are unlocked
+  // Animation controllers and visibility flags for EACH word
+  List<AnimationController> _successAnimControllers = [];
+  List<AnimationController> _errorAnimControllers = [];
+  List<bool> _showSuccessAnimations = [];
+  List<bool> _showErrorAnimations = [];
+  List<bool> _showFeedbacks = [];
+  List<String> _currentFeedbacks = [];
 
-  // Function to speak the word or feedback
-  void _speak(String text) async {
-    await _flutterTts.setLanguage("en-US");
-    await _flutterTts.setPitch(1);
-    await _flutterTts.speak(text);
-  }
+  // Words for Level 3
+  List<String> words = ['fun', 'moon', 'star', 'cloud', 'sky'];
 
-  // Function to start listening for a specific word
-  void _startListening(String word) async {
-    _currentWord = word; // Set the current word being rehearsed
-    _feedbackShown = false; // Reset feedback flag
+  // Updated wordAssets to include type and path, matching LevelOneScreen assets
+  List<Map<String, String>> wordAssets = [
+    {'type': 'animation', 'path': 'assets/Lottie/cat.json'},    // Lottie animation for "fun"
+    {'type': 'animation', 'path': 'assets/Lottie/dog1.json'},   // Lottie animation for "moon"
+    {'type': 'animation', 'path': 'assets/Lottie/su.json'},     // Lottie animation for "star"
+    {'type': 'animation', 'path': 'assets/Lottie/bat.json'},    // Lottie animation for "cloud"
+    {'type': 'animation', 'path': 'assets/Lottie/home.json'},   // Lottie animation for "sky"
+  ];
 
-    // Request microphone permission
-    PermissionStatus status = await Permission.microphone.request();
-    if (status.isGranted) {
-      print("Microphone permission granted");
+  // Custom gradient colors for each word card (unlocked state)
+  List<List<Color>> cardGradientColors = [
+    [Color(0xfffdfdfd), Color(0xfffdfdfd)],  // Gradient for "fun"
+    [Color(0xfffdfdfd), Color(0xfffdfdfd)],  // Gradient for "moon"
+    [Color(0xfffdfdfd), Color(0xfffdfdfd)],  // Gradient for "star"
+    [Color(0xfffdfdfd), Color(0xfffdfdfd)],  // Gradient for "cloud"
+    [Color(0xfffdfdfd), Color(0xfffdfdfd)],  // Gradient for "sky"
+  ];
 
-      bool available = await _speech.initialize();
-      if (available) {
-        print("Speech recognition initialized successfully");
-        setState(() {
-          _isListening = true;
-          _recognizedText = "";
-        });
-        _speech.listen(onResult: (result) {
-          print("Speech result: ${result.recognizedWords}");
+  // Custom gradient colors for locked state (darker shade, matching the solid-color style)
+  List<List<Color>> lockedCardGradientColors = [
+    [Color(0xff404040), Color(0xff404040)],  // Darker gradient for "fun"
+    [Color(0xff1f1f1f), Color(0xff1f1f1f)],  // Darker gradient for "moon"
+    [Color(0xff1f1f1f), Color(0xff1f1f1f)],  // Darker gradient for "star"
+    [Color(0xff1f1f1f), Color(0xff1f1f1f)],  // Darker gradient for "cloud"
+    [Color(0xff1f1f1f), Color(0xff1f1f1f)],  // Darker gradient for "sky"
+  ];
+
+  // Feedback phrases to display
+  List<String> successPhrases = [
+    'Great job!',
+    'Fantastic!',
+    'You did it!',
+    'Amazing!',
+    'Excellent!'
+  ];
+
+  List<String> tryAgainPhrases = [
+    'Try again!',
+    'Almost there!',
+    'Let\'s try once more!',
+    'You can do it!',
+    'Keep trying!'
+  ];
+
+  List<bool> wordRecognized = [false, false, false, false, false];
+  List<bool> wordUnlocked = [true, false, false, false, false];
+  List<bool> isListeningList = [false, false, false, false, false];
+  bool isLevelCompleted = false;
+
+  // Page controller for the card carousel
+  late PageController _pageController;
+  int _currentPage = 0;
+
+  // Colors for kid-friendly theme
+  final Color _primaryColor = const Color(0xFF6A5ACD); // Soft purple
+  final Color _accentColor = const Color(0xFFFF8C00);  // Bright orange
+  final Color _backgroundColor1 = const Color(0xFF8C66FF); // Dark purple gradient start
+  final Color _backgroundColor2 = const Color(0xFF7341E6); // Dark purple gradient middle
+  final Color _backgroundColor3 = const Color(0xFF5E35B1); // Dark purple gradient end
+
+  @override
+  void initState() {
+    super.initState();
+    _speech = stt.SpeechToText();
+    _flutterTts = FlutterTts();
+    _pageController = PageController(viewportFraction: 0.85, initialPage: 0);
+    _loadProgress();
+
+    // Setup animation controller for success animation
+    _confettiController = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    );
+
+    // Initialize animation controllers and state arrays for each word
+    for (int i = 0; i < words.length; i++) {
+      _successAnimControllers.add(
+        AnimationController(
+          duration: const Duration(milliseconds: 2000),
+          vsync: this,
+        ),
+      );
+
+      _errorAnimControllers.add(
+        AnimationController(
+          duration: const Duration(milliseconds: 2000),
+          vsync: this,
+        ),
+      );
+
+      _showSuccessAnimations.add(false);
+      _showErrorAnimations.add(false);
+      _showFeedbacks.add(false);
+      _currentFeedbacks.add('');
+
+      // Add listeners to reset UI after animations complete for each controller
+      _successAnimControllers[i].addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
           setState(() {
-            _recognizedText = result.recognizedWords.trim();
+            _showSuccessAnimations[i] = false;
+            _showFeedbacks[i] = false;
           });
+          _successAnimControllers[i].reset();
+        }
+      });
 
-          // Check if the recognized word matches the current word
-          if (!_feedbackShown) {
-            if (_recognizedText.toLowerCase() == word.toLowerCase()) {
-              _feedbackShown = true;
-              _speak("Good job! You said $word.");
-              _showFeedbackDialog("Good Job!", "You said the correct word.");
-
-              // Unlock the next word
-              _unlockNextWord();
-            } else if (_recognizedText.isNotEmpty) {
-              _feedbackShown = true;
-              _speak("Try again. You said $_recognizedText.");
-              _showFeedbackDialog("Try Again!", "You said $_recognizedText. Try saying $word.");
-            }
-          }
-        });
-      } else {
-        print("Speech recognition failed to initialize");
-      }
-    } else {
-      print("Microphone permission denied");
+      _errorAnimControllers[i].addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          setState(() {
+            _showErrorAnimations[i] = false;
+            _showFeedbacks[i] = false;
+          });
+          _errorAnimControllers[i].reset();
+        }
+      });
     }
-  }
 
-  // Function to stop listening
-  void _stopListening() {
-    _speech.stop();
-    setState(() {
-      _isListening = false;
+    // Listen to page changes
+    _pageController.addListener(() {
+      int next = _pageController.page!.round();
+      if (_currentPage != next) {
+        setState(() {
+          _currentPage = next;
+        });
+      }
     });
   }
 
-  // Function to show feedback dialog
-  void _showFeedbackDialog(String title, String message) {
+  void _loadProgress() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String>? savedRecognized = prefs.getStringList('level3_wordRecognized');
+    List<String>? savedUnlocked = prefs.getStringList('level3_wordUnlocked');
+
+    if (savedRecognized != null && savedUnlocked != null) {
+      setState(() {
+        wordRecognized = savedRecognized.map((e) => e == 'true').toList();
+        wordUnlocked = savedUnlocked.map((e) => e == 'true').toList();
+      });
+    }
+
+    // Check if level is completed
+    if (!wordRecognized.contains(false)) {
+      setState(() {
+        isLevelCompleted = true;
+        prefs.setBool('level4Unlocked', true);
+      });
+    }
+  }
+
+  void _checkWordPronunciation(String word, bool isPractice) async {
+    int index = words.indexOf(word);
+    if (index != -1) {
+      // If this is not practice mode (i.e., word not yet recognized), mark as recognized
+      if (!isPractice && !wordRecognized[index]) {
+        setState(() {
+          wordRecognized[index] = true;
+          _unlockNextWord();
+        });
+
+        // Save progress
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setStringList('level3_wordRecognized', wordRecognized.map((e) => e.toString()).toList());
+        prefs.setStringList('level3_wordUnlocked', wordUnlocked.map((e) => e.toString()).toList());
+
+        // Check for level completion
+        if (!wordRecognized.contains(false)) {
+          setState(() {
+            isLevelCompleted = true;
+            prefs.setBool('level4Unlocked', true);
+          });
+
+          // Show level completion dialog after a short delay
+          Future.delayed(const Duration(milliseconds: 2500), () {
+            _showLevelCompletedDialog();
+          });
+        }
+      }
+
+      // Show success animation and feedback regardless of practice mode
+      _showSuccessAnimationAndFeedback(index);
+
+      // Play success animation
+      _confettiController.forward(from: 0.0);
+    }
+  }
+
+  void _showSuccessAnimationAndFeedback(int index) {
+    // Select a random success phrase
+    final random = DateTime.now().millisecondsSinceEpoch % successPhrases.length;
+
+    setState(() {
+      _showSuccessAnimations[index] = true;
+      _showFeedbacks[index] = true;
+      _currentFeedbacks[index] = successPhrases[random];
+    });
+
+    // Play success animation only for this index
+    if (_successAnimControllers[index].isAnimating) {
+      _successAnimControllers[index].stop();
+    }
+    _successAnimControllers[index].forward();
+
+    // Speak the feedback
+    _flutterTts.speak("${successPhrases[random]} You said ${words[index]} correctly!");
+  }
+
+  void _showErrorAnimationAndFeedback(int index) {
+    // Select a random try again phrase
+    final random = DateTime.now().millisecondsSinceEpoch % tryAgainPhrases.length;
+
+    setState(() {
+      _showErrorAnimations[index] = true;
+      _showFeedbacks[index] = true;
+      _currentFeedbacks[index] = tryAgainPhrases[random];
+    });
+
+    // Play error animation only for this index
+    if (_errorAnimControllers[index].isAnimating) {
+      _errorAnimControllers[index].stop();
+    }
+    _errorAnimControllers[index].forward();
+
+    // Speak the feedback
+    _flutterTts.speak("${tryAgainPhrases[random]} Let's try saying ${words[index]} again.");
+  }
+
+  void _unlockNextWord() {
+    for (int i = 0; i < wordUnlocked.length - 1; i++) {
+      if (wordRecognized[i] && !wordUnlocked[i + 1]) {
+        setState(() {
+          wordUnlocked[i + 1] = true;
+        });
+        break;
+      }
+    }
+  }
+
+  void _startListening(int index) async {
+    // Determine if this is practice mode (word already recognized)
+    bool isPractice = wordRecognized[index];
+
+    // Cancel any animations for this specific index if they're showing
+    if (_showSuccessAnimations[index] || _showErrorAnimations[index]) {
+      setState(() {
+        _showSuccessAnimations[index] = false;
+        _showErrorAnimations[index] = false;
+        _showFeedbacks[index] = false;
+      });
+      _successAnimControllers[index].reset();
+      _errorAnimControllers[index].reset();
+    }
+
+    bool available = await _speech.initialize(
+      onStatus: (status) => print('Status: $status'),
+      onError: (error) => print('Error: $error'),
+    );
+    if (available) {
+      setState(() {
+        isListeningList[index] = true;
+      });
+
+      _speech.listen(
+        onResult: (result) {
+          if (result.finalResult) {
+            String recognizedWord = result.recognizedWords.toLowerCase();
+            if (recognizedWord.contains(words[index])) {
+              _checkWordPronunciation(words[index], isPractice);
+              _stopListening(index);
+            } else if (recognizedWord.isNotEmpty) {
+              // Incorrect word was said
+              _stopListening(index);
+              _showErrorAnimationAndFeedback(index);
+            }
+          }
+        },
+      );
+    }
+  }
+
+  void _stopListening(int index) {
+    setState(() {
+      isListeningList[index] = false;
+    });
+    _speech.stop();
+  }
+
+  void _speakWord(String word) async {
+    await _flutterTts.speak(word);
+  }
+
+  void _showLevelCompletedDialog() {
     showDialog(
       context: context,
-      builder: (context) {
+      barrierDismissible: false,
+      builder: (BuildContext context) {
         return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text("OK"),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: Colors.white,
+          title: ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [Color(0xFF845BCD), Color(0xFF693DB8)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ).createShader(bounds),
+            child: const Text(
+              'LEVEL COMPLETED!',
+              style: TextStyle(
+                fontFamily: 'Impact',
+                fontSize: 24,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ],
+          ),
+          contentPadding: const EdgeInsets.all(20),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                height: 200,
+                child: Lottie.asset(
+                  'assets/Lottie/penguin.json',
+                  repeat: true,
+                  reverse: false,
+                  animate: true,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                "Level 4 has been unlocked",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.nunito(
+                  fontSize: 16,
+                  color: const Color(0xFF323232),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.only(left: 218.0),
+                child: SizedBox(
+                  width: 100,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8E67D5), Color(0xFF6638B6)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: Text(
+                        "Got it!",
+                        style: GoogleFonts.nunito(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
   }
 
-  // Function to unlock the next word
-  void _unlockNextWord() {
-    setState(() {
-      for (int i = 0; i < wordUnlocked.length; i++) {
-        if (!wordUnlocked[i]) {
-          wordUnlocked[i] = true;
-          break; // Unlock only the next locked word
-        }
-      }
-    });
-  }
+  @override
+  void dispose() {
+    _speech.stop();
+    _flutterTts.stop();
+    _pageController.dispose();
+    _confettiController.dispose();
 
-  // Calculate progress based on unlocked words
-  double getProgress() {
-    int unlockedCount = wordUnlocked.where((word) => word).toList().length;
+    // Stop and dispose of all success animation controllers
+    for (var controller in _successAnimControllers) {
+      controller.stop();
+      controller.dispose();
+    }
 
-    // Progress bar should only fill based on unlocked words
-    return unlockedCount / words.length;
+    // Stop and dispose of all error animation controllers
+    for (var controller in _errorAnimControllers) {
+      controller.stop();
+      controller.dispose();
+    }
+
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    double progress = wordRecognized.where((e) => e).length / words.length;
+
     return Scaffold(
-      extendBodyBehindAppBar: true, // Extend the body behind the AppBar
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.transparent, // Make AppBar transparent
-        elevation: 0, // Remove AppBar shadow
-        title: SizedBox.shrink(), // Empty title for a clean transparent app bar
-      ),
-      body: SingleChildScrollView( // Make the entire body scrollable vertically
-        child: Container(
-          // Set the background color for the entire body container
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xff613DC1), Color(0xff2a004e)], // Violet gradient
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: double.infinity,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 45, top: 80.0),
-                  child: Text(
-                    'Level 1',
-                    style: TextStyle(
-                      fontFamily: 'Impact',
-                      fontSize: 22,
-                      color: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, size: 26),
+          onPressed: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => MyHomePage()),
+            );
+          },
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16.0),
+            child: IconButton(
+              icon: const Icon(Icons.help_outline, size: 26),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text("How to Play"),
+                    content: const Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("1. Tap the 🔊 button to hear the word"),
+                        SizedBox(height: 8),
+                        Text("2. Tap the 🎤 button and try to say the word"),
+                        SizedBox(height: 8),
+                        Text("3. When you say it correctly, you'll unlock the next word!"),
+                        SizedBox(height: 8),
+                        Text("4. You can practice completed words any time!"),
+                      ],
                     ),
-                  ),
-                ),
-              ),
-              Container(
-                width: double.infinity,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 45.0),
-                  child: Text(
-                    'Greetings',
-                    style: TextStyle(
-                      fontFamily: 'Impact',
-                      fontSize: 52,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              // Progress bar to track user's progress
-              Padding(
-                padding: const EdgeInsets.all(30),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xff613DC1), Color(0xff2a004e)], // Soft gradient
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: Offset(0, 10),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text("Got it!"),
                       ),
                     ],
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Stack(
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [_backgroundColor1, _backgroundColor2, _backgroundColor3],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Progress section
+              Padding(
+                padding: const EdgeInsets.only(left: 20, right: 20),
+                child: Column(
+                  children: [
+                    Row(
                       children: [
-
-
-                        // Linear progress indicator
-                        LinearProgressIndicator(
-                          value: getProgress(),
-                          backgroundColor: Colors.white.withOpacity(0.3), // Slightly transparent background
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xfffbf36d)),
-                          minHeight: 45, // Reduced height for a more subtle look
-                        ),
-                        // Centered text displaying the completed level
-                        Positioned.fill(
-                          child: Align(
-                            alignment: Alignment.center,
-                            child: Text(
-                              "${(getProgress() * 100).toStringAsFixed(0)}% Completed", // Display percentage
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Text(
+                              ' L E V E L',
                               style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                                fontFamily: "Impact",
+                                fontSize: 20,
+                                color: const Color(0xFFFFF780),
+                                height: 1.0,
                               ),
                             ),
+                          ],
+                        ),
+                        SizedBox(width: 8),
+                        Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Text(
+                              '  3',
+                              style: TextStyle(
+                                fontFamily: "Impact",
+                                fontSize: 20,
+                                color: const Color(0xFFFDF57F),
+                                height: 1.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Text(
+                          'Space Words'.toUpperCase(),
+                          style: TextStyle(
+                            fontFamily: "Impact",
+                            fontSize: 40,
+                            color: const Color(0xFFFDF57F),
+                            height: 1.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: List.generate(5, (index) {
+                            bool isFilled = index < (progress * 5).floor();
+                            return Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(
+                                  isFilled ? Icons.star : Icons.star_border,
+                                  color: Colors.black,
+                                  size: 28,
+                                ),
+                                Icon(
+                                  isFilled ? Icons.star : Icons.star_border,
+                                  color: isFilled ? Colors.amber : Colors.white70,
+                                  size: 24,
+                                ),
+                              ],
+                            );
+                          }),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Stack(
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOut,
+                            height: 36,
+                            width: MediaQuery.of(context).size.width * 0.9 * progress,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Color(0xFFFFEB3B),
+                                  Color(0xFFFFF780),
+                                  Color(0xFFFFAB40),
+                                ],
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                              ),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Color(0xFF7A34AA).withOpacity(0.6),
+                                  blurRadius: 6,
+                                  spreadRadius: -1,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (progress > 0.05)
+                            Positioned(
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              child: Container(
+                                height: 6,
+                                width: MediaQuery.of(context).size.width * 0.9 * progress,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.white.withOpacity(0.0),
+                                      Colors.white.withOpacity(0.2),
+                                      Colors.white.withOpacity(0.0),
+                                    ],
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: List.generate(4, (index) {
+                              final markerProgress = (index + 1) / 5;
+                              final markerReached = progress >= markerProgress;
+                              return Container(
+                                width: 2,
+                                height: 8,
+                                margin: EdgeInsets.only(top: 4),
+                                decoration: BoxDecoration(
+                                  color: markerReached
+                                      ? Colors.white.withOpacity(0.6)
+                                      : Colors.white.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(9),
+                                ),
+                              );
+                            }),
+                          ),
+                          Center(
+                            child: Text(
+                              "${(progress * 100).toInt()}%",
+                              style: const TextStyle(
+                                fontFamily: "Impact",
+                                fontSize: 20,
+                                color: Color(0x80fdf7f7),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 30),
+              Expanded(
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: words.length,
+                  itemBuilder: (context, index) {
+                    return _buildWordCard(index);
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(words.length, (index) {
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      height: 10,
+                      width: _currentPage == index ? 24 : 10,
+                      decoration: BoxDecoration(
+                        color: _currentPage == index ? _accentColor : Colors.white.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWordCard(int index) {
+    final bool isCurrentWordUnlocked = wordUnlocked[index];
+    final bool isCurrentWordRecognized = wordRecognized[index];
+    final assetPath = wordAssets[index]['path']!;
+
+    // Determine if the asset is an image or a Lottie animation based on the file extension
+    bool isLottie = assetPath.endsWith('.json');
+
+    return AnimatedScale(
+      scale: _currentPage == index ? 1.0 : 0.9,
+      duration: const Duration(milliseconds: 200),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Card(
+          elevation: 8,
+          shadowColor: Colors.black45,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: BorderSide(
+              color: isCurrentWordRecognized ? Colors.green : Colors.transparent,
+              width: isCurrentWordRecognized ? 3 : 0,
+            ),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: isCurrentWordUnlocked
+                  ? LinearGradient(
+                colors: cardGradientColors[index],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              )
+                  : LinearGradient(
+                colors: lockedCardGradientColors[index],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (isCurrentWordRecognized)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle, color: Colors.white, size: 16),
+                        SizedBox(width: 4),
+                        Text(
+                          "Completed!",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
                   ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      children: [
+                        // Render either an image or a Lottie animation, matching LevelOneScreen
+                        isLottie
+                            ? SizedBox(
+                          height: 220,
+                          width: 220,
+                          child: Lottie.asset(
+                            assetPath,
+                            fit: BoxFit.cover, // Match LevelOneScreen
+                            repeat: true,
+                            animate: isCurrentWordUnlocked,
+                          ),
+                        )
+                            : Image.asset(
+                          assetPath,
+                          height: 220,
+                          width: 220,
+                          fit: BoxFit.cover, // Match LevelOneScreen
+                          color: isCurrentWordUnlocked ? null : Colors.grey.withOpacity(0.7),
+                          colorBlendMode: isCurrentWordUnlocked ? null : BlendMode.saturation,
+                        ),
+                        if (!isCurrentWordUnlocked)
+                          Positioned.fill(
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                              child: Container(
+                                color: Colors.black.withOpacity(0.1),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-
-              SizedBox(height: 100),
-              // Make the content scrollable horizontally
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: words.asMap().entries.map((entry) {
-                    int index = entry.key;
-                    String word = entry.value;
-
-                    return Padding(
-                      padding: const EdgeInsets.only(left: 10.0),
-                      child: Container(
-                        height: 650,
-                        width: 350, // Increased width to accommodate image and buttons
-                        margin: EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1), // Light transparent background for frosted effect
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 20,
-                              offset: Offset(0, 10),
+                const SizedBox(height: 24),
+                Text(
+                  words[index].toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                    color: isCurrentWordUnlocked ? _primaryColor : Colors.white60,
+                  ),
+                ),
+                if (isCurrentWordRecognized && isCurrentWordUnlocked && !(_showSuccessAnimations[index] || _showErrorAnimations[index]))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      "Tap buttons below to practice!",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontStyle: FontStyle.italic,
+                        color: _primaryColor.withOpacity(0.8),
+                      ),
+                    ),
+                  ),
+                if (_showFeedbacks[index])
+                  AnimatedOpacity(
+                    opacity: _showFeedbacks[index] ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 300),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Text(
+                        _currentFeedbacks[index],
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: _showSuccessAnimations[index]
+                              ? Colors.green
+                              : _showErrorAnimations[index]
+                              ? Colors.red
+                              : _primaryColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 30),
+                if (isCurrentWordUnlocked)
+                  Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      AnimatedOpacity(
+                        opacity: (_showSuccessAnimations[index] || _showErrorAnimations[index]) ? 0.0 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            InkWell(
+                              onTap: () => _speakWord(words[index]),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: _primaryColor,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: _primaryColor.withOpacity(0.4),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    const Icon(Icons.volume_up, color: Colors.white, size: 32),
+                                    const SizedBox(height: 6),
+                                    const Text(
+                                      "HEAR",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            InkWell(
+                              onTap: isListeningList[index]
+                                  ? () => _stopListening(index)
+                                  : () => _startListening(index),
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: isListeningList[index] ? Colors.red : _accentColor,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (isListeningList[index] ? Colors.red : _accentColor).withOpacity(0.4),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  children: [
+                                    Icon(
+                                      isListeningList[index] ? Icons.stop : Icons.mic,
+                                      color: Colors.white,
+                                      size: 32,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      isListeningList[index] ? "STOP" : "SPEAK",
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: Stack(
-                            children: [
-                              // Apply the blur effect to the background
-                              Positioned.fill(
-                                child: BackdropFilter(
-                                  filter: ImageFilter.blur(sigmaX: 50, sigmaY: 25),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.4), // Transparent background
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              // Content inside the frosted glass box
-                              Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.all(50.0),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(4), // Set rounded corners here
-                                      child: Image.asset(
-                                        'assets/images/$word.jpg',
-                                        height: 250,
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: 10),
-                                  Text(
-                                    word,
-                                    style: TextStyle(
-                                      fontFamily: 'Impact',
-                                      fontSize: 32,
-                                      color: wordUnlocked[index] ? Colors.white : Colors.white.withOpacity(0.5), // Faded if locked
-                                    ),
-                                  ),
-                                  SizedBox(height: 30),
-                                  // Replace Row with Column to stack buttons vertically
-                                  Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      // Hear button with solid orange color
-                                      ElevatedButton.icon(
-                                        onPressed: wordUnlocked[index]
-                                            ? () {
-                                          print("Hear button clicked for $word");
-                                          _speak(word);
-                                        }
-                                            : null,
-                                        icon: Icon(
-                                          Icons.volume_up,
-                                          color: Colors.white,
-                                        ),
-                                        label: Text("Hear"),
-                                        style: ElevatedButton.styleFrom(
-                                          minimumSize: Size(250, 50),
-                                          backgroundColor: Color(0xffdd5916), // Make the button wider
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(10), // Rounded corners
-                                          ),
-                                          padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                                          foregroundColor: Colors.white, // White text color
-                                        ),
-                                      ),
-                                      SizedBox(height: 20), // Space between buttons
-                                      // Rehearse button with solid orange color
-                                      ElevatedButton.icon(
-                                        onPressed: wordUnlocked[index]
-                                            ? () {
-                                          print("Rehearse button clicked for $word");
-                                          _isListening && _currentWord == word
-                                              ? _stopListening()
-                                              : _startListening(word);
-                                        }
-                                            : null,
-                                        icon: Icon(
-                                          Icons.mic,
-                                          color: Colors.white,
-                                        ),
-                                        label: Text(_isListening && _currentWord == word
-                                            ? "Stop"
-                                            : "Rehearse"),
-                                        style: ElevatedButton.styleFrom(
-                                          minimumSize: Size(250, 50),
-                                          backgroundColor: Color(0xfffd9220), // Make the button wider
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(10), // Rounded corners
-                                          ),
-                                          padding: EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-                                          foregroundColor: Colors.white, // White text color
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  // Lock image if the word is locked
-                                  if (!wordUnlocked[index])
-                                    Positioned(
-                                      top: 10,
-                                      right: 10,
-                                      child: Image.asset(
-                                        'assets/images/lock.png',  // Your lock image
-                                        height: 30,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ],
+                      ),
+                      if (_showSuccessAnimations[index])
+                        AnimatedOpacity(
+                          opacity: _showSuccessAnimations[index] ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 700),
+                          child: SizedBox(
+                            width: 150,
+                            height: 150,
+                            child: Lottie.asset(
+                              'assets/Lottie/correct_animation.json',
+                              controller: _successAnimControllers[index],
+                              repeat: false,
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
+                      if (_showErrorAnimations[index])
+                        AnimatedOpacity(
+                          opacity: _showErrorAnimations[index] ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 3500),
+                          child: SizedBox(
+                            width: 180,
+                            height: 130,
+                            child: Lottie.asset(
+                              'assets/Lottie/wrong5.json',
+                              controller: _errorAnimControllers[index],
+                              repeat: true,
+                              fit: BoxFit.contain,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                if (!isCurrentWordUnlocked)
+                  Column(
+                    children: [
+                      const Icon(
+                        Icons.lock,
+                        color: Colors.white70,
+                        size: 50,
                       ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
+                      const SizedBox(height: 10),
+                      Text(
+                        "Complete previous word to unlock",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+              ],
+            ),
           ),
         ),
       ),

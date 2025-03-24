@@ -15,6 +15,7 @@ import '../Levels/level_three_screen.dart';
 import '../Levels/level_two_screen.dart';
 import 'Profile/profile.dart';
 import 'appointment.dart';
+import 'extraworks.dart';
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
@@ -313,8 +314,14 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                       _buildSummaryBox(
                         'Extra works',
                         Colors.teal,
-                        '',
+                        'Read the story',
                         Icons.workspace_premium,
+                        onTap: (){
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => StoryGenerationScreen()),
+                          );
+                        }
                       ),
                     ],
                   ),
@@ -548,65 +555,69 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildSummaryBox(String title, Color color, String data, IconData icon, {String? subData}) {
-    return Container(
-      width: 250,
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.9),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 28,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  title,
-                  style: GoogleFonts.poppins(
+  Widget _buildSummaryBox(String title, Color color, String data, IconData icon, {String? subData, Function? onTap}) {
+    return InkWell(
+      onTap: onTap != null ? () => onTap() : null,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        width: 250,
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.9),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    icon,
                     color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    size: 28,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    title,
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                data,
+                style: GoogleFonts.nunito(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              if (subData != null) ...[
+                const SizedBox(height: 5),
+                Text(
+                  subData,
+                  style: GoogleFonts.nunito(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 10),
-            Text(
-              data,
-              style: GoogleFonts.nunito(
-                color: Colors.white.withOpacity(0.9),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            if (subData != null) ...[
-              const SizedBox(height: 5),
-              Text(
-                subData,
-                style: GoogleFonts.nunito(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
             ],
-          ],
+          ),
         ),
       ),
     );

@@ -30,7 +30,7 @@ class _LevelOneScreenState extends State<LevelOneScreen> with TickerProviderStat
   // Words and images for the speech learning game
   List<String> words = ['cat', 'dog', 'car', 'bat', 'home'];
   List<String> wordImages = [
-    'assets/Lottie/cat.json',      // Lottie animation for "cat"
+    'assets/Lottie/1.json',      // Lottie animation for "cat"
     'assets/Lottie/dog1.json',      // Lottie animation for "dog"
     'assets/Lottie/su.json',      // Lottie animation for "car"
     'assets/Lottie/bat.json',      // Lottie animation for "bug"
@@ -48,11 +48,11 @@ class _LevelOneScreenState extends State<LevelOneScreen> with TickerProviderStat
 
   // Custom gradient colors for locked state (darker shade, matching the solid-color style)
   List<List<Color>> lockedCardGradientColors = [
-    [Color(0xff757575), Color(0xff757575)],  // Locked gradient for "cat"
-    [Color(0xff757575), Color(0xff757575)],  // Locked gradient for "dog"
-    [Color(0xff757575), Color(0xff757575)],  // Locked gradient for "car"
-    [Color(0xff757575), Color(0xff757575)],  // Locked gradient for "bug"
-    [Color(0xff757575), Color(0xff757575)],  // Locked gradient for "Ball"
+    [Color(0xff404040), Color(0xff404040)],  // Darker gradient for "cat"
+    [Color(0xff1f1f1f), Color(0xff1f1f1f)],   // Darker gradient for "dog"
+    [Color(0xff1f1f1f), Color(0xff1f1f1f)],   // Darker gradient for "car"
+    [Color(0xff1f1f1f), Color(0xff1f1f1f)],  // Darker gradient for "bug"
+    [Color(0xff1f1f1f), Color(0xff1f1f1f)],   // Darker gradient for last entry  // Locked gradient for "Ball"
   ];
 
   // Feedback phrases to display
@@ -84,9 +84,9 @@ class _LevelOneScreenState extends State<LevelOneScreen> with TickerProviderStat
   // Colors for kid-friendly theme
   final Color _primaryColor = const Color(0xFF6A5ACD); // Soft purple
   final Color _accentColor = const Color(0xFFFF8C00);  // Bright orange
-  final Color _backgroundColor1 = const Color(0xFFB49CFB); // Light blue gradient start
-  final Color _backgroundColor2 = const Color(0xFF9665F7); // Light blue gradient middle
-  final Color _backgroundColor3 = const Color(0xFF6E00D4); // Deep blue gradient end
+  final Color _backgroundColor1 = const Color(0xFF8C66FF); // Dark purple gradient start
+  final Color _backgroundColor2 = const Color(0xFF7341E6); // Dark purple gradient middle
+  final Color _backgroundColor3 = const Color(0xFF5E35B1); // Dark purple gradient end // Deep blue gradient end
 
   @override
   void initState() {
@@ -502,7 +502,7 @@ class _LevelOneScreenState extends State<LevelOneScreen> with TickerProviderStat
                               ' L E V E L',
                               style: TextStyle(
                                 fontFamily: "Impact",
-                                fontSize: 40,
+                                fontSize: 20,
                                 color: const Color(0xFFFFF780),
                                 height: 1.0,
                               ),
@@ -521,12 +521,26 @@ class _LevelOneScreenState extends State<LevelOneScreen> with TickerProviderStat
                               '  1',
                               style: TextStyle(
                                 fontFamily: "Impact",
-                                fontSize: 40,
+                                fontSize: 20,
                                 color: const Color(0xFFFDF57F),
                                 height: 1.0,
                               ),
                             ),
                           ],
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10,),
+                    Row(
+                      children: [
+                        Text(
+                          'Simple syllables'.toUpperCase(),
+                          style: TextStyle(
+                            fontFamily: "Impact",
+                            fontSize: 40,
+                            color: const Color(0xFFFDF57F),
+                            height: 1.0,
+                          ),
                         ),
                       ],
                     ),
@@ -589,9 +603,9 @@ class _LevelOneScreenState extends State<LevelOneScreen> with TickerProviderStat
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [
-                                  Color(0xFF9D71E8),  // Light purple
-                                  Color(0xFF6C38C0),  // Medium purple
-                                  Color(0xFF3E0271),  // Deep purple
+                                  Color(0xFFFFEB3B), // Light purple
+                                  Color(0xFFFFF780),  // Medium purple
+                                  Color(0xFFFFAB40),  // Deep purple
                                 ],
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
