@@ -259,39 +259,32 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AnimatedBuilder(
-                            animation: _glowAnimation,
-                            builder: (context, child) {
-                              return Text(
-                                'ADVENTURE',
-                                style: TextStyle(
-                                  fontFamily: "Impact",
-                                  fontSize: 40,
-                                  color: const Color(0xFF323232),
-                                  height: 1.0,
-                                  shadows: [
-                                    Shadow(
-                                      blurRadius: 5.0 + _glowAnimation.value,
-                                      color: Colors.black.withOpacity(0.3),
-                                      offset: const Offset(2.0, 2.0),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                    children: [
+                    SizedBox(height: 10,),
+                    Row(
+                      children: [
+                        Text(
+                          ' SPEAK',
+                          style: TextStyle(
+                            fontFamily: "Impact",
+                            fontSize: 40,
+                            color: const Color(0xFFFDAA40),
+                            height: 1.0,
                           ),
-                          Text(
-                            'QUEST',
-                            style: TextStyle(
-                              fontFamily: "Impact",
-                              fontSize: 40,
-                              color: const Color(0xFFFDAA40),
-                              height: 1.0,
-                            ),
+                        ),
+                        Text(
+                          ' EASE!',
+                          style: TextStyle(
+                            fontFamily: "Impact",
+                            fontSize: 40,
+                            color: const Color(0xFF000000),
+                            height: 1.0,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
+                    ],
+                ),
                     ],
                   ),
                 ),
