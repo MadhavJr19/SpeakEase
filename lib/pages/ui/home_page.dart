@@ -311,10 +311,10 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                       _buildPremiumAppointmentReminder(),
                       const SizedBox(width: 15),
                       _buildSummaryBox(
-                        'News',
+                        'Extra works',
                         Colors.teal,
-                        'New levels soon!',
-                        Icons.announcement,
+                        '',
+                        Icons.workspace_premium,
                       ),
                     ],
                   ),
