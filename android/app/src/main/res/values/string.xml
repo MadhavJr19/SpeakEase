@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+    <string name="app_name">SpeakEase</string>
+    <string name="facebook_app_id">544091905373929</string>
+    <string name="fb_login_protocol_scheme">fb544091905373929</string>
+    <string name="facebook_client_token">92b2b73995d4cca7a9e160de49a0619b</string>
+</resources>
