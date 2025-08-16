@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:new01/pages/splashscreen.dart';
-import 'package:new01/pages/theme_provider.dart';
 import 'package:new01/pages/ui/home_page.dart';
 import 'package:provider/provider.dart';
 void main() async {
@@ -29,7 +28,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(
       title: 'Speakease',

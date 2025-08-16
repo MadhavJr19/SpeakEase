@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:new01/pages/theme_provider.dart';
 import 'package:new01/pages/ui/Profile/update_profile.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
@@ -178,7 +177,6 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -482,7 +480,6 @@ class _ImageViewerPageState extends State<_ImageViewerPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     Widget content;
     if (widget.image != null) {
       content = Image.memory(widget.image!);
@@ -490,7 +487,6 @@ class _ImageViewerPageState extends State<_ImageViewerPage> {
       content = Image.network(widget.imageUrl!);
     } else {
       content = Container(
-        color: theme.colorScheme.secondary.withOpacity(0.3),
         child: Center(
           child: Text(
             widget.username.isNotEmpty ? widget.username[0].toUpperCase() : 'U',

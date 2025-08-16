@@ -3,8 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../theme_provider.dart';
-
 class AccountInfoPage extends StatefulWidget {
   const AccountInfoPage({super.key});
 
@@ -63,7 +61,6 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final themeProvider = Provider.of<ThemeProvider>(context);
 
     const lightGradient = LinearGradient(
       colors: [Color(0xffffffff), Color(0xff808080)],
@@ -89,9 +86,6 @@ class _AccountInfoPageState extends State<AccountInfoPage> {
       body: SingleChildScrollView(
         child: Container(
           height: 1000,
-          decoration: BoxDecoration(
-            gradient: themeProvider.isDarkMode ? darkGradient : lightGradient, // Background color if needed
-          ),
           child: Column(
             children: [
               const SizedBox(height: 150,),

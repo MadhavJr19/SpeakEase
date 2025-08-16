@@ -3,7 +3,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:new01/pages/theme_provider.dart';
 
 class ChildManagementPage extends StatefulWidget {
   const ChildManagementPage({super.key});
@@ -179,7 +178,6 @@ class _ChildManagementPageState extends State<ChildManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,

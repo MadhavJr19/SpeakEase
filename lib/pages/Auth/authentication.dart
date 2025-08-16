@@ -1,63 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:lottie/lottie.dart';
 import 'package:new01/pages/Auth/signup.dart';
-import 'package:new01/pages/Auth/userdetails.dart';
-import '../ui/home_page.dart';
 import 'login.dart';
 
 class AuthPage extends StatelessWidget {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  Future<void> signInWithGoogle(BuildContext context) async {
-    try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      await googleSignIn.signOut(); // Force account selection
-
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-      if (googleUser == null) return; // User canceled sign-in
-
-      final GoogleSignInAuthentication googleAuth =
-      await googleUser.authentication;
-
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential =
-      await _auth.signInWithCredential(credential);
-      final User? user = userCredential.user;
-
-      if (user != null) {
-        final DocumentSnapshot userDoc =
-        await _firestore.collection('users').doc(user.uid).get();
-
-        if (!userDoc.exists) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => UserDetailsPage(userId: user.uid),
-            ),
-          );
-        } else {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => MyHomePage()),
-          );
-        }
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Google Sign-In failed: ${e.toString()}")),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
@@ -77,7 +24,7 @@ class AuthPage extends StatelessWidget {
               right: 0,
               child: Container(
                 height: screenHeight * 0.45,
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,

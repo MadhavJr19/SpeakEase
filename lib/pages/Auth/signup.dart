@@ -11,7 +11,6 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'login.dart';
 
-// Removed CustomScrollPhysics since we'll use default BouncingScrollPhysics
 class SignUpPage extends StatefulWidget {
   const SignUpPage({Key? key}) : super(key: key);
 
@@ -44,7 +43,7 @@ class _SignUpPageState extends State<SignUpPage> {
       // User details exist, navigate to HomePage
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => MyHomePage()),
+        MaterialPageRoute(builder: (context) => const MyHomePage()),
       );
     } else {
       // New user, navigate to UserDetailsPage
@@ -55,7 +54,7 @@ class _SignUpPageState extends State<SignUpPage> {
             userId: user.uid,
             initialEmail: user.email ?? '',
           ),
-        ),
+        )
       );
     }
   }
